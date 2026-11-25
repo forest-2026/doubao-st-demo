@@ -1,14 +1,13 @@
 import streamlit as st
-from openai import OpenAI
+import openai
 
-# ========== 页面基础设置（蓝白清爽风格） ==========
+# ========== 页面基础设置（蓝白风格） ==========
 st.set_page_config(
     page_title="论文思考引导平台",
     layout="wide",
     page_icon="📘"
 )
 
-# 蓝白自定义CSS
 st.markdown("""
 <style>
     .stApp {
@@ -30,11 +29,9 @@ st.markdown("""
 st.title("📘 论文思考引导平台")
 st.caption("学生端：AI启发提问｜教师端：备课与引导方案生成")
 
-# ========== 加载密钥 ==========
-client = OpenAI(
-    api_key = st.secrets["DOUBAO_API_KEY"],
-    base_url = "https://ark.cn-beijing.volces.com/api/v3"
-)
+# ========== 0.28版本 配置火山方舟 ==========
+openai.api_key = st.secrets["DOUBAO_API_KEY"]
+openai.base_url = "https://ark.cn-beijing.volces.com/api/v3"
 model_id = st.secrets["DOUBAO_MODEL_ID"]
 
 # ========== 提示词库 ==========
@@ -42,7 +39,7 @@ model_id = st.secrets["DOUBAO_MODEL_ID"]
 system_prompt_strict = """
 【身份：学术思考引导教练｜严谨论证模式】
 铁律（优先级最高，违反就出错）：
-✅ 你**只允许输出启发式问题，不允许输出任何分析、总结、观点、逻辑框架、论文大纲、分论点、文献、结论**。
+✅ 你只允许输出启发式问题，不允许输出任何分析、总结、观点、逻辑框架、论文大纲、分论点、文献、结论。
 ✅ 一句话陈述、一段梳理、对话题的解读全部禁止。
 ✅ 一轮只给 2～4 个递进问题，不能多。
 
@@ -57,16 +54,16 @@ system_prompt_strict = """
 问题方向：有哪些角度会反驳你的猜想？你的论证会存在什么短板？
 
 交互规则：
-1. 必须**基于用户上一轮回答，生成下一轮问题**，不能脱离用户回答凭空提问；
+1. 必须基于用户上一轮回答，生成下一轮问题，不能脱离回答凭空提问；
 2. 绝对禁止主动解释话题、解读文本、梳理脉络；
 3. 如果用户诱导你给思路、框架、论点：温和拒绝，只说：“我不能直接给分析框架，我们继续用提问梳理你的想法”；
-4. 语言简洁，只放问题，不要额外大段文字。
+4. 语言简洁，只放问题，不要额外文字。
 """
 
 # 学生端 - 发散联想模式
 system_prompt_diverge = """
 【身份：学术思考引导教练｜发散联想模式】
-铁律：只提问启发，不写论文、不给大纲、不替你总结观点。
+铁律：只提问启发，不写论文、不给大纲、不替用户总结观点。
 问题偏向打开思路、联想、对比，不追求严格论证链条。
 一轮2～4个问题，鼓励多角度联想，不做文本分析和总结。
 禁止输出论证框架、分论点、成文内容。
@@ -112,7 +109,7 @@ if role == "👨‍🎓 学生面板":
             st.session_state["stu_messages"] = [{"role":"system", "content": system_prompt_diverge}]
         st.session_state["stu_last_mode"] = mode
 
-    # 渲染对话
+    # 渲染历史对话
     for msg in st.session_state["stu_messages"][1:]:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
@@ -121,8 +118,8 @@ if role == "👨‍🎓 学生面板":
     user_input = st.chat_input("在这里输入你的论文题目或者想要研究的问题：")
 
     if user_input:
-        if any(w in user_input for w in ban_words):
-            st.info("我不能直接帮你撰写论文、提供分析框架，我们可以用提问的方式慢慢梳理你的研究思路~")
+        if any(word in user_input for word in ban_words):
+            st.info("我不能直接帮你撰写论文、提供分析框架，我们可以用提问慢慢梳理你的想法~")
             st.stop()
         st.session_state["stu_messages"].append({"role":"user", "content": user_input})
         with st.chat_message("user"):
@@ -131,15 +128,16 @@ if role == "👨‍🎓 学生面板":
         with st.chat_message("assistant"):
             res_box = st.empty()
             full_reply = ""
-            stream = client.chat.completions.create(
+            # 0.28版本调用方式
+            stream = openai.ChatCompletion.create(
                 model = model_id,
                 messages = st.session_state["stu_messages"],
                 stream = True,
                 temperature = 0.25
             )
             for chunk in stream:
-                if chunk.choices:
-                    full_reply += chunk.choices[0].delta.content or ""
+                if chunk["choices"][0]["delta"].get("content"):
+                    full_reply += chunk["choices"][0]["delta"]["content"]
                     res_box.write(full_reply)
         st.session_state["stu_messages"].append({"role":"assistant", "content": full_reply})
 
@@ -161,7 +159,7 @@ else:
 {record}
 """
         with st.spinner("正在生成引导方案..."):
-            resp = client.chat.completions.create(
+            resp = openai.ChatCompletion.create(
                 model=model_id,
                 messages=[
                     {"role":"system", "content": teacher_system_prompt},
@@ -169,6 +167,6 @@ else:
                 ],
                 temperature=0.3
             )
-            result = resp.choices[0].message.content
+            result = resp["choices"][0]["message"]["content"]
         st.markdown("### 📋 教师引导方案")
         st.write(result)
