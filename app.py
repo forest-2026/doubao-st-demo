@@ -29,9 +29,9 @@ st.markdown("""
 st.title("📘 论文思考引导平台")
 st.caption("学生端：AI启发提问｜教师端：备课与引导方案生成")
 
-# ========== 0.28版本 配置火山方舟 ==========
+# ========== 0.28版本 配置火山方舟【这里改好了！用api_base】 ==========
 openai.api_key = st.secrets["DOUBAO_API_KEY"]
-openai.base_url = "https://ark.cn-beijing.volces.com/api/v3"
+openai.api_base = "https://ark.cn-beijing.volces.com/api/v3"
 model_id = st.secrets["DOUBAO_MODEL_ID"]
 
 # ========== 提示词库 ==========
