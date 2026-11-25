@@ -1,8 +1,4 @@
-import streamlit as st
-from openai import OpenAI
 
-# 读取密钥（不要直接写sk在代码里！）
-client = OpenAI(
     api_key = st.secrets["DOUBAO_API_KEY"],
     base_url = "https://ark.cn-beijing.volces.com/api/v3"
 )
