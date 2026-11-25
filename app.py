@@ -10,8 +10,19 @@ st.title("📘 论文思考引导平台")
 st.caption("学生端：AI启发提问｜教师端：备课与引导方案生成")
 
 # ========== 密钥与接入点 ==========
-api_key = st.secrets["DOUBAO_API_KEY"]
-model_id = "ep-20261125200620-lkmcg"   # 只有一个 ep-
+# 从 secrets 读 key，并清除所有空格/换行（防止复制污染）
+api_key = "".join(st.secrets["DOUBAO_API_KEY"].split())
+
+# 接入点写死，只有一个 ep-
+model_id = "ep-20261125200620-lkmcg"
+
+# 侧边栏临时输入 key（不填就用上面 secrets 里的）
+manual_key = st.sidebar.text_input(
+    "API Key（临时备用，不填就用 secrets 里的）",
+    type="password"
+)
+if manual_key.strip():
+    api_key = "".join(manual_key.split())
 
 client = OpenAI(
     api_key=api_key,
