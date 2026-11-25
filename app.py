@@ -1,5 +1,5 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 
 # ========== 页面基础设置（蓝白风格） ==========
 st.set_page_config(
@@ -29,9 +29,11 @@ st.markdown("""
 st.title("📘 论文思考引导平台")
 st.caption("学生端：AI启发提问｜教师端：备课与引导方案生成")
 
-# ========== 0.28版本 配置火山方舟【这里改好了！用api_base】 ==========
-openai.api_key = st.secrets["DOUBAO_API_KEY"]
-openai.api_base = "https://ark.cn-beijing.volces.com/api/v3"
+# ========== openai 1.x 配置火山方舟 ==========
+client = OpenAI(
+    api_key = st.secrets["DOUBAO_API_KEY"],
+    base_url = "https://ark.cn-beijing.volces.com/api/v3"
+)
 model_id = st.secrets["DOUBAO_MODEL_ID"]
 
 # ========== 提示词库 ==========
@@ -128,16 +130,15 @@ if role == "👨‍🎓 学生面板":
         with st.chat_message("assistant"):
             res_box = st.empty()
             full_reply = ""
-            # 0.28版本调用方式
-            stream = openai.ChatCompletion.create(
+            stream = client.chat.completions.create(
                 model = model_id,
                 messages = st.session_state["stu_messages"],
                 stream = True,
                 temperature = 0.25
             )
             for chunk in stream:
-                if chunk["choices"][0]["delta"].get("content"):
-                    full_reply += chunk["choices"][0]["delta"]["content"]
+                if chunk.choices[0].delta.content:
+                    full_reply += chunk.choices[0].delta.content
                     res_box.write(full_reply)
         st.session_state["stu_messages"].append({"role":"assistant", "content": full_reply})
 
@@ -159,7 +160,7 @@ else:
 {record}
 """
         with st.spinner("正在生成引导方案..."):
-            resp = openai.ChatCompletion.create(
+            resp = client.chat.completions.create(
                 model=model_id,
                 messages=[
                     {"role":"system", "content": teacher_system_prompt},
@@ -167,6 +168,6 @@ else:
                 ],
                 temperature=0.3
             )
-            result = resp["choices"][0]["message"]["content"]
+            result = resp.choices[0].message.content
         st.markdown("### 📋 教师引导方案")
         st.write(result)
